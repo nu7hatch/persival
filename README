@@ -1,0 +1,8 @@
+Persival - persisten key value store in Go
+==========================================
+
+This key-value store is not efficient, it doesn't implement sophisticated
+hash tables nor optimization algorithms... It just works and fits my needs
+for now on :P
+
+In the future it may grow up into full stack programmatic key-value store. 

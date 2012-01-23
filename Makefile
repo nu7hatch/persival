@@ -1,6 +1,6 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=persival
+TARG=github.com/nu7hatch/persival
 GOFILES=persival.go
 
 include $(GOROOT)/src/Make.pkg

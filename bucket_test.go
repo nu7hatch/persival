@@ -20,11 +20,16 @@ func TestBucketSet(t *testing.T) {
 	}
 }
 
+type dummy struct {
+	A string
+}
+
 func TestBucketGet(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	key, _ := bkt.Set("hello")
-	if val, err := bkt.Get(key); err != nil || val.(string) != "hello" {
+	Register(&dummy{})
+	key, _ := bkt.Set(&dummy{"hello"})
+	if val, err := bkt.Get(key); err != nil || val.(*dummy).A != "hello" {
 		t.Errorf("Expected to get proper value from specfied key, error; %v", err)
 	}
 	if _, err := bkt.Get(123); err == nil {

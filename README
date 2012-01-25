@@ -9,14 +9,17 @@ Philosophy
 ----------
 Persival follows those simple rules:
 
-* No user-defined keys are allowed, system under what key the value will
-  be stored.
+* No user-defined keys are allowed, system decides under what key the
+  value will be stored.
 * All the data SHALL always be kept in the memory.
-* Disk dump SHOULD be written periodically.
-* Activity (append-only) log MAY be optionally enabled to provide data
-  recovery and consistency.
-* Activity log MUST be erased after writing data to disk.
+* Persistency SHALL be provided only via logging.
+* Activity log SHOULD be merged it reaches certain size.
 * Search for the values CAN NOT be performed.
+
+Storage implementation
+----------------------
+So far it's only proof of concept, so all the data is stored as a gob
+encoded stream.
 
 Installation
 ------------
@@ -38,16 +41,16 @@ Usage
 	import "github.com/nu7hatch/persival"
 
 	func main() {
-        bkt, _ := persival.NewBucket("./mybucket.bkt", 0)
-        key1 := bkt.Set([]byte("hello"))
-        key2 := bkt.Set([]byte("world"))
-        bkt.Update(key2, []byte("joe"))
-        bkt.Delete(key1)
-        bkt.Sync()
+        bucket, _ := persival.NewBucket("./mybucket.bkt", 0)
+        k1, _ := bucket.Set([]byte("hello"))
+        k2, _ := bucket.Set([]byte("world"))
+        bucket.Update(key2, []byte("joe"))
+        bucket.Delete(key1)
+        bucket.Close()
 	}
 
 Copyright
 ---------
 Copyright (C) 2011 by Krzysztof Kowalik <chris@nu7hat.ch>
 
-See COPYING file for details.
+Released under the MIT license. See COPYING file for details.

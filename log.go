@@ -2,24 +2,23 @@ package persival
 
 import (
 	"encoding/gob"
-	"os"
 	"io"
 )
 
-// OperationType represents a kind of the operation.
-type OperationType int
+// ChangeType represents a kind of the operation.
+type ChangeType int
 
-// Operation types.
+// Change types.
 const (
-	OpWrite  OperationType = 1
-	OpDelete OperationType = 2
+	CW ChangeType = 1
+	CD ChangeType = 2
 )
 
-// Operation ia a representation of a single operation performed on
+// Change ia a representation of a single operation performed on
 // the storage.
-type Operation struct {
+type Change struct {
 	// The operation type.
-	Kind OperationType
+	Kind ChangeType
 	// The affected key.
 	Key int
 	// The data commited while this operation.
@@ -32,7 +31,7 @@ type Log struct {
 	// The logger's input/output source.
 	source io.Writer
 	// Internal encoder
-	enc    *gob.Encoder
+	enc *gob.Encoder
 }
 
 // NewLog allocates new log instance and returns it.
@@ -41,7 +40,7 @@ type Log struct {
 //
 func NewLog(source io.Writer) (log *Log) {
 	log = &Log{}
-	log.switchSource(source)
+	log.setSource(source)
 	return
 }
 
@@ -51,28 +50,33 @@ func NewLog(source io.Writer) (log *Log) {
 // source - A source stream.
 //
 // Returns a channel from which results can be read.
-func ReadLog(source io.Reader) <-chan *Operation {
-	out := make(chan *Operation)
-	go func() {
-		dec := gob.NewDecoder(source)
-		for {
-			var op *Operation
-			if err := dec.Decode(&op); err != nil {
+func ReadLog(source io.Reader) (map[int][]byte, error) {
+	ops := make(map[int][]byte)
+	dec := gob.NewDecoder(source)
+	for {
+		var op *Change
+		if err := dec.Decode(&op); err != nil {
+			if err == io.EOF {
 				goto exit
 			}
-			out <- op
+			return nil, err
 		}
-	exit:
-		close(out)
-	}()
-	return out
+		switch op.Kind {
+		case CW:
+			ops[op.Key] = op.Data
+		case CD:
+			delete(ops, op.Key)
+		}
+	}
+exit:
+	return ops, nil
 }
 
-// switchSource changes logger's source stream into specified one.
+// setSource changes logger's source stream into specified one.
 //
 // source - A source stream.
 //
-func (log *Log) switchSource(source io.Writer) {
+func (log *Log) setSource(source io.Writer) {
 	log.source, log.enc = source, gob.NewEncoder(source)	
 }
 	
@@ -81,12 +85,21 @@ func (log *Log) switchSource(source io.Writer) {
 // op - The operation to be written.
 //
 // Returns an error if something went wrong.
-func (log *Log) Append(op *Operation) error {
+func (log *Log) Append(op *Change) error {
 	if err := log.enc.Encode(op); err != nil {
 		return err
 	}
-	if c, ok := log.source.(*os.File); ok {
-		c.Sync()
-	}
 	return nil
+}
+
+// Close closes the log.
+func (log *Log) Close() {
+	if c, ok := log.source.(io.Closer); ok {
+		c.Close()
+	}
+}
+
+// Initializer
+func init() {
+	gob.Register(&Change{})
 }

@@ -105,6 +105,9 @@ func TestBucketSyncAndReopen(t *testing.T) {
 	if hello.(string) != "hello" || hurra.(string) != "hurra" {
 		t.Errorf("Expected to have proper values after load")
 	}
+	if _, err = bkt.Set("hello"); err != nil {
+		t.Errorf("Expected to set something new, error: %v", err)
+	}
 	bkt.Destroy()
 }
 

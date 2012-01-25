@@ -69,6 +69,11 @@ func (bkt *Bucket) setup() (err error) {
 				bkt.autoincr = k
 			}
 		}
+		f.Close()
+		if f, err = os.OpenFile(bkt.fileName, os.O_WRONLY, 0666); err != nil {
+			return
+		}
+		f.Seek(0, os.SEEK_END)
 	} else if f, err = os.Create(bkt.fileName); err != nil {
 		return
 	}

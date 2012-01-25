@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 	"fmt"
+	"encoding/gob"
 )
 
 // Error thrown when record not eixsts.
@@ -22,7 +23,7 @@ func (e *RecordNotFound) Error() string {
 // layer via log files.
 type Bucket struct {
 	// The data stored in the bucket.
-	data map[int][]byte
+	data map[int]interface{}
 	// The value of the next key.
 	autoincr int
 	// The storage file name.
@@ -42,11 +43,16 @@ type Bucket struct {
 //
 // Returns new bucket or an error if something went wrong.
 func NewBucket(file string, flags int) (bkt *Bucket, err error) {
-	bkt = &Bucket{fileName: file, flags: flags, data: make(map[int][]byte)}
+	bkt = &Bucket{fileName: file, flags: flags, data: make(map[int]interface{})}
 	if err = bkt.setup(); err != nil {
 		return nil, err
 	}
 	return
+}
+
+// Registers is just an alias for gob.Register.
+func Register(x interface{}) {
+	gob.Register(x)
 }
 
 // setup opens or creates the storage file and initializes the bucket.
@@ -71,7 +77,7 @@ func (bkt *Bucket) setup() (err error) {
 }
 
 // All returns a map with all the records stored in the bucket.
-func (bkt *Bucket) All() map[int][]byte {
+func (bkt *Bucket) All() map[int]interface{} {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	return bkt.data
@@ -84,7 +90,7 @@ func (bkt *Bucket) All() map[int][]byte {
 //
 // Returns an identifier of the created record or an error if something
 // went wrong.
-func (bkt *Bucket) Set(val []byte) (key int, err error) {
+func (bkt *Bucket) Set(val interface{}) (key int, err error) {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	bkt.autoincr += 1
@@ -99,7 +105,7 @@ func (bkt *Bucket) Set(val []byte) (key int, err error) {
 // key - The key of value to be found.
 //
 // Returns the value or an error if something went wrong or record doesn't exist.
-func (bkt *Bucket) Get(key int) (val []byte, err error) {
+func (bkt *Bucket) Get(key int) (val interface{}, err error) {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	var ok bool
@@ -133,7 +139,7 @@ func (bkt *Bucket) Delete(key int) (err error) {
 // val - The value to be stored.
 //
 // Returns an error if something went wrong.
-func (bkt *Bucket) Update(key int, val []byte) (err error) {
+func (bkt *Bucket) Update(key int, val interface{}) (err error) {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	if _, ok := bkt.data[key]; ok {

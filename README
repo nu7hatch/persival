@@ -42,9 +42,9 @@ Usage
     
     func main() {
         bucket, _ := persival.NewBucket("./mybucket.bkt", 0)
-        k1, _ := bucket.Set([]byte("hello"))
-        k2, _ := bucket.Set([]byte("world"))
-        bucket.Update(k2, []byte("hurra"))
+        k1, _ := bucket.Set("hello")
+        k2, _ := bucket.Set("world")
+        bucket.Update(k2, "hurra")
         bucket.Delete(k1)
         bucket.Close()
     }

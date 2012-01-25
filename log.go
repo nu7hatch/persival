@@ -22,7 +22,7 @@ type Change struct {
 	// The affected key.
 	Key int
 	// The data commited while this operation.
-	Data []byte
+	Data interface{}
 }
 
 // Log implements interface for storage operations logging. It uses
@@ -50,8 +50,8 @@ func NewLog(source io.Writer) (log *Log) {
 // source - A source stream.
 //
 // Returns a channel from which results can be read.
-func ReadLog(source io.Reader) (map[int][]byte, error) {
-	ops := make(map[int][]byte)
+func ReadLog(source io.Reader) (map[int]interface{}, error) {
+	ops := make(map[int]interface{})
 	dec := gob.NewDecoder(source)
 	for {
 		var op *Change

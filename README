@@ -1,8 +1,53 @@
 Persival - persisten key value store in Go
 ==========================================
 
-This key-value store is not efficient, it doesn't implement sophisticated
-hash tables nor optimization algorithms... It just works and fits my needs
-for now on :P
+Persival is an in-memory pseudo key-value storage, very efficient to
+keep list of records with small amount of data, when there's no need
+of searching for the values nor keys.
 
-In the future it may grow up into full stack programmatic key-value store.
+Philosophy
+----------
+Persival follows those simple rules:
+
+* No user-defined keys are allowed, system under what key the value will
+  be stored.
+* All the data SHALL always be kept in the memory.
+* Disk dump SHOULD be written periodically.
+* Activity (append-only) log MAY be optionally enabled to provide data
+  recovery and consistency.
+* Activity log MUST be erased after writing data to disk.
+* Search for the values CAN NOT be performed.
+
+Installation
+------------
+Use the `goinstall` tool:
+
+    $ goinstall github.com/nu7hatch/persival
+
+... or install it manually:
+
+    $ git clone git://github.com/nu7hatch/persival.git
+    $ cd gopersival
+    $ make install
+
+Usage
+-----
+
+	package main
+	
+	import "github.com/nu7hatch/persival"
+
+	func main() {
+        bkt, _ := persival.NewBucket("./mybucket.bkt", 0)
+        key1 := bkt.Set([]byte("hello"))
+        key2 := bkt.Set([]byte("world"))
+        bkt.Update(key2, []byte("joe"))
+        bkt.Delete(key1)
+        bkt.Sync()
+	}
+
+Copyright
+---------
+Copyright (C) 2011 by Krzysztof Kowalik <chris@nu7hat.ch>
+
+See COPYING file for details.

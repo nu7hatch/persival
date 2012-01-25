@@ -72,6 +72,8 @@ func (bkt *Bucket) setup() (err error) {
 
 // All returns a map with all the records stored in the bucket.
 func (bkt *Bucket) All() map[int][]byte {
+	bkt.mtx.Lock()
+	defer bkt.mtx.Unlock()
 	return bkt.data
 }
 

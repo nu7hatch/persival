@@ -6,23 +6,26 @@ import (
 	"testing"
 )
 
+func init() {
+	os.Remove("/tmp/foo.bkt")
+	os.Remove("/tmp/bench.bkt")
+}
+
 func TestNew(t *testing.T) {
-	if bkt := NewBucket(); bkt == nil {
-		t.Errorf("Expected to create new bucket")
+	if _, err := NewBucket("/tmp/foo.bkt", 0); err != nil {
+		t.Errorf("Expected to create new bucket, %v", err)
 	}
 }
 
 func TestSet(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	if key := bkt.Set([]byte("hello")); key == -1 {
 		t.Errorf("Expected to get key of the set value")
 	}
 }
 
 func TestGet(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	key := bkt.Set([]byte("hello"))
 	if val := bkt.Get(key); string(val) != "hello" {
 		t.Errorf("Expected to get proper value from specfied key")
@@ -33,8 +36,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	key := bkt.Set([]byte("hello"))
 	if ok := bkt.Update(key, []byte("world")); !ok {
 		t.Errorf("Expected to have true confirmation from update operation")
@@ -48,8 +50,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	key := bkt.Set([]byte("hello"))
 	if ok := bkt.Delete(key); !ok {
 		t.Errorf("Expected to have true confirmation from delete operation")
@@ -63,8 +64,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	key := bkt.Set([]byte("hello"))
 	if ok := bkt.Exists(key); !ok {
 		t.Errorf("Expected to have proper result of existance check when record exists")
@@ -75,8 +75,7 @@ func TestExists(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	bkt.Set([]byte("hello"))
 	bkt.Set([]byte("world"))
 	if bkt.Len() != 2 {
@@ -89,10 +88,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestSyncAndReopen(t *testing.T) {
-	bkt := NewBucket()
-	if err := bkt.Open("/tmp/foo.gdb", 0); err != nil {
-		t.Errorf("%v", err)
-	}
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	bkt.Set([]byte("hello"))
 	bkt.Set([]byte("world"))
 	bkt.Set([]byte("super"))
@@ -101,8 +97,8 @@ func TestSyncAndReopen(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 	bkt.Close()
-	bkt = NewBucket()
-	if err := bkt.Open("/tmp/foo.gdb", 0); err != nil {
+	bkt, err := NewBucket("/tmp/foo.bkt", 0)
+	if err != nil {
 		t.Errorf("%v", err)
 	}
 	if bkt.Len() != 2 {
@@ -114,12 +110,11 @@ func TestSyncAndReopen(t *testing.T) {
 	if string(bkt.Get(0)) != "hello" || string(bkt.Get(2)) != "super" {
 		t.Errorf("Expected to have proper values after load")
 	}
-	os.Remove("/tmp/foo.gdb")
+	os.Remove("/tmp/foo.bkt")
 }
 
 func TestSetDeleteAndSetAgain(t *testing.T) {
-	bkt := NewBucket()
-	bkt.Open("/tmp/foo.gdb", 0)
+	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	key1 := bkt.Set([]byte("hello"))
 	bkt.Set([]byte("world"))
 	bkt.Delete(key1)
@@ -136,8 +131,7 @@ const numberOfOps = 1e5
 
 func BenchmarkBucketWritesAndReads(b *testing.B) {
 	b.StopTimer()
-	bkt := NewBucket()
-	bkt.Open("/tmp/bench.gdb", 0)
+	bkt, _ := NewBucket("/tmp/bench.bkt", 0)
 	var wg sync.WaitGroup
 	b.StartTimer()
 	wg.Add(2)

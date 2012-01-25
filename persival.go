@@ -14,7 +14,6 @@ type Bucket struct {
 	store    *os.File
 	data     [][]byte
 	freeKeys []int
-	dataLen  int
 	tick     <-chan time.Time
 	mtx      sync.Mutex
 	smtx     sync.Mutex
@@ -22,10 +21,47 @@ type Bucket struct {
 
 func init() {
 	gob.Register([][]byte{})
+	gob.Register(&Operation{})
 }
 
-func NewBucket() (bkt *Bucket) {
-	return &Bucket{dataLen: 0}
+func NewBucket(file string, flags int) (bkt *Bucket, err error) {
+	bkt = &Bucket{}
+	err = bkt.open(file, flags)
+	return
+}
+
+func (bkt *Bucket) open(file string, flags int) (err error) {
+	bkt.smtx.Lock()
+	defer bkt.smtx.Unlock()
+	var fd int
+	if fd, err = syscall.Open(file, os.O_RDWR, 0666); err != nil {
+		if err == os.ENOENT {
+			if fd, err = syscall.Open(file, os.O_CREATE, 0666); err != nil {
+				return
+			}
+		}
+		return
+	}
+	bkt.store = os.NewFile(fd, file)
+	de := gob.NewDecoder(bkt.store)
+	bkt.mtx.Lock()
+	defer bkt.mtx.Unlock()
+	if err = de.Decode(&bkt.data); err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return
+	}
+	for i, val := range bkt.data {
+		if len(val) == 0 {
+			bkt.freeKeys = append(bkt.freeKeys, i)
+		}
+	}
+	return
+}
+
+func (bkt *Bucket) All() [][]byte {
+	return bkt.data
 }
 
 func (bkt *Bucket) Set(val []byte) (key int) {
@@ -38,8 +74,7 @@ func (bkt *Bucket) Set(val []byte) (key int) {
 		bkt.data[key] = val
 	} else {
 		bkt.data = append(bkt.data[:], val)
-		key = bkt.dataLen
-		bkt.dataLen += 1
+		key = len(bkt.data) - 1
 	}
 	return
 }
@@ -96,36 +131,6 @@ func (bkt *Bucket) Len() int {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	return len(bkt.data) - len(bkt.freeKeys)
-}
-
-func (bkt *Bucket) Open(file string, flags int) (err error) {
-	bkt.smtx.Lock()
-	defer bkt.smtx.Unlock()
-	var fd int
-	if fd, err = syscall.Open(file, os.O_RDWR, 0666); err != nil {
-		if err == os.ENOENT {
-			if fd, err = syscall.Open(file, os.O_CREATE, 0666); err != nil {
-				return
-			}
-		}
-		return
-	}
-	bkt.store = os.NewFile(fd, file)
-	de := gob.NewDecoder(bkt.store)
-	bkt.mtx.Lock()
-	defer bkt.mtx.Unlock()
-	if err = de.Decode(&bkt.data); err != nil {
-		if err == io.EOF {
-			return nil
-		}
-		return
-	}
-	for i, val := range bkt.data {
-		if len(val) == 0 {
-			bkt.freeKeys = append(bkt.freeKeys, i)
-		}
-	}
-	return
 }
 
 func (bkt *Bucket) SyncWatch(d time.Duration) {

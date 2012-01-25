@@ -5,6 +5,7 @@ import (
 	"sync"
 	"fmt"
 	"encoding/gob"
+	"bytes"
 )
 
 // Error thrown when record not eixsts.
@@ -56,29 +57,35 @@ func Register(x interface{}) {
 }
 
 // setup opens or creates the storage file and initializes the bucket.
+// It also optimizes the log by removing multiple operations on the same
+// key.
+//
 // Returns an error if something went wrong.
 func (bkt *Bucket) setup() (err error) {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	var f *os.File
+	var data map[int]interface{}
+	var buf = bytes.NewBuffer([]byte{})
 	// Read the log file (if exists) or try to create new one...
-	if f, err = os.Open(bkt.fileName); err == nil {
-		bkt.data, err = ReadLog(f)
-		for k, _ := range bkt.data {
+	if f, err = os.OpenFile(bkt.fileName, os.O_RDWR|os.O_CREATE, 0666); err == nil {
+		// XXX: no backup here, it definitelly should be one!
+		buf.ReadFrom(f)
+		data, _ = ReadLog(buf)
+		f.Truncate(0)
+		f.Seek(0, os.SEEK_SET)
+		bkt.log = NewLog(f)
+		for k, v := range data {
 			if k > bkt.autoincr {
 				bkt.autoincr = k
 			}
+			if err = bkt.log.Append(&Change{CW, k, v}); err != nil {
+				return
+			}
+			bkt.data[k] = v
 		}
-		f.Close()
-		if f, err = os.OpenFile(bkt.fileName, os.O_WRONLY, 0666); err != nil {
-			return
-		}
-		f.Seek(0, os.SEEK_END)
-	} else if f, err = os.Create(bkt.fileName); err != nil {
-		return
 	}
-	bkt.log = NewLog(f)
-	return
+	return nil
 }
 
 // All returns a map with all the records stored in the bucket.

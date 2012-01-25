@@ -2,6 +2,14 @@ package persival
 
 import "testing"
 
+type dummy struct {
+	A string
+}
+
+func init() {
+	Register(&dummy{})
+}
+
 func TestNewBucket(t *testing.T) {
 	bkt, err := NewBucket("/tmp/foo.bkt", 0)
 	if err != nil {
@@ -15,19 +23,14 @@ func TestNewBucket(t *testing.T) {
 func TestBucketSet(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	if key, err := bkt.Set([]byte("hello")); err != nil || key != 1 {
+	if key, err := bkt.Set(&dummy{"hello"}); err != nil || key != 1 {
 		t.Errorf("Expected to get key of the set value, error: %v", err)
 	}
-}
-
-type dummy struct {
-	A string
 }
 
 func TestBucketGet(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	Register(&dummy{})
 	key, _ := bkt.Set(&dummy{"hello"})
 	if val, err := bkt.Get(key); err != nil || val.(*dummy).A != "hello" {
 		t.Errorf("Expected to get proper value from specfied key, error; %v", err)
@@ -40,14 +43,14 @@ func TestBucketGet(t *testing.T) {
 func TestBucketUpdate(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	key, _ := bkt.Set("hello")
-	if err := bkt.Update(key, "world"); err != nil {
+	key, _ := bkt.Set(&dummy{"hello"})
+	if err := bkt.Update(key, &dummy{"world"}); err != nil {
 		t.Errorf("Expected to update value of the specified key, error: %v", err)
 	}
-	if val, err := bkt.Get(key); err != nil || val.(string) != "world" {
+	if val, err := bkt.Get(key); err != nil || val.(*dummy).A != "world" {
 		t.Errorf("Expected to have proper value after update, error: %v", err)
 	}
-	if err := bkt.Update(123, "hello"); err == nil {
+	if err := bkt.Update(123, &dummy{"hello"}); err == nil {
 		t.Errorf("Expected to get an error when updating non-existant record")
 	}
 }
@@ -55,7 +58,7 @@ func TestBucketUpdate(t *testing.T) {
 func TestBucketDelete(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	key, _ := bkt.Set("hello")
+	key, _ := bkt.Set(&dummy{"hello"})
 	if err := bkt.Delete(key); err != nil {
 		t.Errorf("Expected to delete specified record, error: %v", err)
 	}
@@ -70,7 +73,7 @@ func TestBucketDelete(t *testing.T) {
 func TestBucketExists(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	key, _ := bkt.Set("hello")
+	key, _ := bkt.Set(&dummy{"hello"})
 	if ok := bkt.Exists(key); !ok {
 		t.Errorf("Expected to get true when record exists")
 	}
@@ -82,9 +85,9 @@ func TestBucketExists(t *testing.T) {
 func TestBucketLen(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
 	defer bkt.Destroy()
-	bkt.Set("hello")
-	bkt.Set("world")
-	bkt.Set("hurra")
+	bkt.Set(&dummy{"hello"})
+	bkt.Set(&dummy{"world"})
+	bkt.Set(&dummy{"hurra"})
 	bkt.Delete(2)
 	if bkt.Len() != 2 {
 		t.Errorf("Expected to get proper bucket size")
@@ -93,9 +96,9 @@ func TestBucketLen(t *testing.T) {
 
 func TestBucketSyncAndReopen(t *testing.T) {
 	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
-	bkt.Set("hello")
-	bkt.Set("world")
-	bkt.Set("hurra")
+	bkt.Set(&dummy{"hello"})
+	bkt.Set(&dummy{"world"})
+	bkt.Set(&dummy{"hurra"})
 	bkt.Delete(2)
 	bkt.Close()
 	bkt, err := NewBucket("/tmp/foo.bkt", 0)
@@ -107,23 +110,37 @@ func TestBucketSyncAndReopen(t *testing.T) {
 	}
 	hello, _ := bkt.Get(1)
 	hurra, _ := bkt.Get(3)
-	if hello.(string) != "hello" || hurra.(string) != "hurra" {
+	if hello.(*dummy).A != "hello" || hurra.(*dummy).A != "hurra" {
 		t.Errorf("Expected to have proper values after load")
 	}
-	if _, err = bkt.Set("hello"); err != nil {
+	bkt.Delete(1)
+	if _, err = bkt.Set(&dummy{"hello"}); err != nil {
 		t.Errorf("Expected to set something new, error: %v", err)
 	}
+	bkt.Close()
+	bkt, err = NewBucket("/tmp/foo.bkt", 0)
+	if err != nil {
+		t.Errorf("Expected to reopen the bucket, error: %v", err)
+	}
+	if bkt.Len() != 2 {
+		t.Errorf("Expected to have 2 records after load, got %d", bkt.Len())
+	}
+	hurra, _ = bkt.Get(3)
+	hello, _ = bkt.Get(4)
+	if hello.(*dummy).A != "hello" || hurra.(*dummy).A != "hurra" {
+		t.Errorf("Expected to have proper values after load")
+	}	
 	bkt.Destroy()
 }
 
-const numberOfOps = 100000
+const numberOfRecords = 100000
 
 func BenchmarkBucketWrite(b *testing.B) {
 	b.StopTimer()
 	bkt, _ := NewBucket("/tmp/bench.bkt", 0)
 	defer bkt.Destroy()
 	b.StartTimer()
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Set("hello")
 	}
 }
@@ -132,11 +149,11 @@ func BenchmarkBucketRead(b *testing.B) {
 	b.StopTimer()
 	bkt, _ := NewBucket("/tmp/bench.bkt", 0)
 	defer bkt.Destroy()
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Set("hello")
 	}
 	b.StartTimer()
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Get(i)
 	}
 }
@@ -145,11 +162,11 @@ func BenchmarkBucketDelete(b *testing.B) {
 	b.StopTimer()
 	bkt, _ := NewBucket("/tmp/bench.bkt", 0)
 	defer bkt.Destroy()
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Set("hello")
 	}
 	b.StartTimer()
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Delete(i)
 	}
 }
@@ -157,7 +174,7 @@ func BenchmarkBucketDelete(b *testing.B) {
 func BenchmarkBucketOpen(b *testing.B) {
 	b.StopTimer()
 	bkt, _ := NewBucket("/tmp/bench.bkt", 0)
-	for i := 0; i < numberOfOps; i += 1 {
+	for i := 0; i < numberOfRecords; i += 1 {
 		bkt.Set("hello")
 	}
 	bkt.Close()

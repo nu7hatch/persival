@@ -4,8 +4,8 @@ import (
 	"os"
 	"sync"
 	"fmt"
-	"encoding/gob"
 	"bytes"
+	"encoding/gob"
 )
 
 // Error thrown when record not eixsts.
@@ -65,27 +65,27 @@ func (bkt *Bucket) setup() (err error) {
 	bkt.mtx.Lock()
 	defer bkt.mtx.Unlock()
 	var f *os.File
-	var data map[int]interface{}
-	var buf = bytes.NewBuffer([]byte{})
-	// Read the log file (if exists) or try to create new one...
+	var m map[int]interface{}
 	if f, err = os.OpenFile(bkt.fileName, os.O_RDWR|os.O_CREATE, 0666); err == nil {
-		// XXX: no backup here, it definitelly should be one!
-		buf.ReadFrom(f)
-		data, _ = ReadLog(buf)
+		orig := bytes.NewBuffer([]byte{})
+		if _, err = orig.ReadFrom(f); err != nil {
+			return
+		}
+		if m, err = ReadLog(orig); err != nil {
+			return
+		}
 		f.Truncate(0)
 		f.Seek(0, os.SEEK_SET)
 		bkt.log = NewLog(f)
-		for k, v := range data {
+		for k, v := range m {
+			bkt.log.Append(&Change{CW, k, v})
+			bkt.data[k] = v
 			if k > bkt.autoincr {
 				bkt.autoincr = k
 			}
-			if err = bkt.log.Append(&Change{CW, k, v}); err != nil {
-				return
-			}
-			bkt.data[k] = v
 		}
 	}
-	return nil
+	return
 }
 
 // All returns a map with all the records stored in the bucket.
@@ -156,7 +156,7 @@ func (bkt *Bucket) Update(key int, val interface{}) (err error) {
 	defer bkt.mtx.Unlock()
 	if _, ok := bkt.data[key]; ok {
 		bkt.data[key] = val
-		err = bkt.log.Append(&Change{CD, key, val})
+		err = bkt.log.Append(&Change{CW, key, val})
 	} else {
 		err = &RecordNotFound{key}
 	}

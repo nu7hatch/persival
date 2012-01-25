@@ -95,13 +95,15 @@ func TestBucketLen(t *testing.T) {
 }
 
 func TestBucketSyncAndReopen(t *testing.T) {
-	bkt, _ := NewBucket("/tmp/foo.bkt", 0)
+	var bkt *Bucket
+	var err error
+	bkt, _ = NewBucket("/tmp/foo.bkt", 0)
 	bkt.Set(&dummy{"hello"})
 	bkt.Set(&dummy{"world"})
 	bkt.Set(&dummy{"hurra"})
 	bkt.Delete(2)
 	bkt.Close()
-	bkt, err := NewBucket("/tmp/foo.bkt", 0)
+	bkt, err = NewBucket("/tmp/foo.bkt", 0)
 	if err != nil {
 		t.Errorf("Expected to reopen the bucket, error: %v", err)
 	}
@@ -133,7 +135,7 @@ func TestBucketSyncAndReopen(t *testing.T) {
 	bkt.Destroy()
 }
 
-const numberOfRecords = 100000
+const numberOfRecords = 10000
 
 func BenchmarkBucketWrite(b *testing.B) {
 	b.StopTimer()

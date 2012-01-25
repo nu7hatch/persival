@@ -30,18 +30,14 @@ type Change struct {
 type Log struct {
 	// The logger's input/output source.
 	source io.Writer
-	// Internal encoder
-	enc *gob.Encoder
 }
 
 // NewLog allocates new log instance and returns it.
 //
 // source - A source stream.
 //
-func NewLog(source io.Writer) (log *Log) {
-	log = &Log{}
-	log.setSource(source)
-	return
+func NewLog(source io.Writer) *Log {
+	return &Log{source}
 }
 
 // ReadLog reads operations from the specified source and passes them
@@ -52,14 +48,13 @@ func NewLog(source io.Writer) (log *Log) {
 // Returns a channel from which results can be read.
 func ReadLog(source io.Reader) (map[int]interface{}, error) {
 	ops := make(map[int]interface{})
-	dec := gob.NewDecoder(source)
 	for {
-		var op *Change
-		if err := dec.Decode(&op); err != nil {
-			if err == io.EOF {
-				goto exit
-			}
-			return nil, err
+		dec := gob.NewDecoder(source)
+		var op Change
+		if err := dec.Decode(&op); err == io.EOF {
+			goto exit
+		} else if err != nil {
+			return ops, err
 		}
 		switch op.Kind {
 		case CW:
@@ -70,23 +65,15 @@ func ReadLog(source io.Reader) (map[int]interface{}, error) {
 	}
 exit:
 	return ops, nil
-}
-
-// setSource changes logger's source stream into specified one.
-//
-// source - A source stream.
-//
-func (log *Log) setSource(source io.Writer) {
-	log.source, log.enc = source, gob.NewEncoder(source)	
-}
-	
+}	
 // Append writes given operation to the log file.
 //
 // op - The operation to be written.
 //
 // Returns an error if something went wrong.
 func (log *Log) Append(op *Change) error {
-	if err := log.enc.Encode(op); err != nil {
+	enc := gob.NewEncoder(log.source)
+	if err := enc.Encode(op); err != nil {
 		return err
 	}
 	return nil

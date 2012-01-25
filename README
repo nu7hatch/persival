@@ -9,11 +9,11 @@ Philosophy
 ----------
 Persival follows those simple rules:
 
-* No user-defined keys are allowed, system decides under what key the
+* No user-defined keys are allowed, system MUST decide under what key the
   value will be stored.
 * All the data SHALL always be kept in the memory.
 * Persistency SHALL be provided only via logging.
-* Activity log SHOULD be merged it reaches certain size.
+* Activity log SHOULD be merged after it reaches certain size.
 * Search for the values CAN NOT be performed.
 
 Storage implementation
@@ -30,24 +30,24 @@ Use the `goinstall` tool:
 ... or install it manually:
 
     $ git clone git://github.com/nu7hatch/persival.git
-    $ cd gopersival
+    $ cd persival
     $ make install
 
 Usage
 -----
 
-	package main
-	
-	import "github.com/nu7hatch/persival"
-
-	func main() {
+    package main
+    
+    import "github.com/nu7hatch/persival"
+    
+    func main() {
         bucket, _ := persival.NewBucket("./mybucket.bkt", 0)
         k1, _ := bucket.Set([]byte("hello"))
         k2, _ := bucket.Set([]byte("world"))
-        bucket.Update(key2, []byte("joe"))
-        bucket.Delete(key1)
+        bucket.Update(k2, []byte("hurra"))
+        bucket.Delete(k1)
         bucket.Close()
-	}
+    }
 
 Copyright
 ---------

@@ -64,7 +64,8 @@ func ReadLog(source io.Reader) (map[int]interface{}, error) {
 		if err := dec.Decode(&op); err == io.EOF {
 			goto exit
 		} else if err != nil {
-			return ops, err
+			continue
+			//return ops, err
 		}
 		switch op.Kind {
 		case CW:

@@ -11,8 +11,8 @@
 package persival
 
 import (
-	"testing"
 	"bytes"
+	"testing"
 )
 
 func TestNewLog(t *testing.T) {

@@ -76,7 +76,8 @@ func ReadLog(source io.Reader) (map[int]interface{}, error) {
 	}
 exit:
 	return ops, nil
-}	
+}
+
 // Append writes given operation to the log file.
 //
 // op - The operation to be written.

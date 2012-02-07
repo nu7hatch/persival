@@ -141,7 +141,7 @@ func TestBucketSyncAndReopen(t *testing.T) {
 	hello, _ = bkt.Get(4)
 	if hello.(*dummy).A != "hello" || hurra.(*dummy).A != "hurra" {
 		t.Errorf("Expected to have proper values after load")
-	}	
+	}
 	bkt.Destroy()
 }
 

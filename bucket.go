@@ -11,11 +11,11 @@
 package persival
 
 import (
-	"os"
-	"sync"
-	"fmt"
 	"bytes"
 	"encoding/gob"
+	"fmt"
+	"os"
+	"sync"
 )
 
 // Error thrown when record not eixsts.
@@ -26,7 +26,7 @@ type RecordNotFound struct {
 
 // Error returns an error message.
 func (e *RecordNotFound) Error() string {
-	return fmt.Sprintf("record not found (key: %d)", e.Key) 
+	return fmt.Sprintf("record not found (key: %d)", e.Key)
 }
 
 // Bucket implements API for managing and accessing stored data. Bucket is

@@ -23,15 +23,9 @@ encoded stream.
 
 Installation
 ------------
-Use the `goinstall` tool:
+Use the `go install` tool:
 
-    $ goinstall github.com/nu7hatch/persival
-
-... or install it manually:
-
-    $ git clone git://github.com/nu7hatch/persival.git
-    $ cd persival
-    $ make install
+    $ go install github.com/nu7hatch/persival
 
 Usage
 -----
